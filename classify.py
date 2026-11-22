@@ -6,7 +6,6 @@ import ollama
 class Category(str, Enum):
     ignore = "ignore"
     contest = "contest"
-    offer = "offer"
     opportunity = "opportunity"
     event = "event"
 
@@ -26,7 +25,6 @@ Categories:
 purely transactional or promotional, no personal relevance.
 - contest: anything about a competition they're in — registration, schedules, and \
 especially RESULTS or "what happens next" details.
-- offer: discounts and commercial offers.
 - opportunity: summer schools, scholarships, programs, or invitations from universities \
 or contest organizers — a real chance to DO something, not an ad pretending to be one.
 - event: talks, ceremonies, meetups, webinars, leisure events tied to a specific date.
@@ -37,20 +35,20 @@ time-sensitive / must act.
 ABOUT THE USER (use this to judge RELEVANCE and importance, not category):
 - Stage: pre-final year of high school
 - Academic focus: mathematics, computer science, physics, engineering
-- What genuinely matters: competitive olympiads, contests, discounts and offers, summer schools/programs, scholarships in my field
+- What genuinely matters: competitive olympiads, contests, summer schools/programs, scholarships in my field
 - Generally NOT interested in: unsolicited recruitment from universities I'm not pursuing, regardless of prestige
 
 Judgment rules:
 - A real opportunity (a summer school they could apply to) is 'opportunity', importance \
-2-3. A university marketing email selling its programs is 'offer' or 'ignore', importance \
+2-3. A university marketing email selling its programs is 'ignore', importance \
 0-1. Tell them apart by whether there's a concrete thing to apply to or attend.
-- A discount under ~15% off, or a generic sale, is importance 0-1. A discount greater or equal to 20% is set to imp 2\
- and one greater or equal to 40% is set to imp 3.
+- Discounts, sales and other commercial offers are 'ignore', importance 0, unless they \
+are tied to a contest or program in the user's field.
 - BE INCLUSIVE. When unsure whether something matters, score it HIGHER, not lower. Only \
 use 'ignore' when you're confident it's noise. Missing one real opportunity is far worse \
 than surfacing one extra email.
 - reason: one short sentence naming the single detail that matters — a deadline, a \
-result, the discount size.
+result, a date.
 - If the email body has little or no real text (image-only marketing, for example), \
 say so plainly in the reason — e.g. "image-only promo, no text" — and do not invent \
 content that isn't there.

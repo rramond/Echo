@@ -16,7 +16,6 @@ _CATEGORY_HINTS = {
                     "bursa", "internship", "intern", "program"],
     "contest":     ["contest", "competition", "olympiad", "olimpiad", "concurs",
                     "result", "rezultat"],
-    "offer":       ["offer", "deal", "discount", "sale", "reducer", "oferta", "promo"],
     "event":       ["event", "eveniment", "webinar", "talk", "ceremony", "conferin"],
 }
 

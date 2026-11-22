@@ -27,8 +27,7 @@ Everything runs on your own machine: [Ollama](https://ollama.com) for the LLM an
 | `contest`     | Competitions: registrations, schedules, **results**          |
 | `opportunity` | Summer schools, scholarships, programs you can apply to      |
 | `event`       | Talks, ceremonies, webinars tied to a date                   |
-| `offer`       | Discounts and commercial offers                              |
-| `ignore`      | Newsletters, spam, 2FA codes, receipts                       |
+| `ignore`      | Newsletters, spam, promos and discounts, 2FA codes, receipts |
 
 Importance runs from **0** (beneath notice) to **3** (time-sensitive). Anything scored **≥ 2** is flagged 🔔.
 
