@@ -1,6 +1,7 @@
 .env
 .venv/
 __pycache__/
-agent.db*.onnx
+agent.db
+*.onnx
 *.onnx.json
 *.wav
