@@ -5,3 +5,4 @@ agent.db
 *.onnx
 *.onnx.json
 *.wav
+*.bak
