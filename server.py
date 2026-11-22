@@ -34,7 +34,7 @@ TASK_PATH = HERE / "task.json"
 PORT = 8765
 FETCH_INTERVAL = 300  # seconds between inbox checks while running
 
-DEFAULT_TASK = ("Watch the Gmail inbox over IMAP, classify incoming mail, "
+DEFAULT_TASK = ("Watch the configured inboxes over IMAP, classify incoming mail, "
                 "and answer voice queries about recent messages.")
 
 # ---------------------------------------------------------------- agent state
@@ -74,16 +74,18 @@ def run_cycle():
 
     init_db()
     t0 = time.time()
-    new_items = fetch_new()
+    new_items, errors = fetch_new()
+    for err in errors:
+        add_log(f"Fetch failed — {err}", "fail", 0)
     notified = 0
-    for message_id, msg in new_items:
+    for account, message_id, msg in new_items:
         subject = decode_str(msg.get("Subject"))
         r = triage(subject, get_body(msg)[:2000])
         notify = r.importance >= 2
         notified += notify
         save(message_id, decode_str(msg.get("From")), subject,
-             msg.get("Date") or "", get_body(msg)[:2000], r, notify)
-        add_log(f"{'🔔 ' if notify else ''}{r.category.value} imp={r.importance} — {subject[:60]}",
+             msg.get("Date") or "", get_body(msg)[:2000], r, notify, account)
+        add_log(f"{'🔔 ' if notify else ''}[{account}] {r.category.value} imp={r.importance} — {subject[:60]}",
                 "ok", 0)
     embed_pending()
     dur = int(time.time() - t0)

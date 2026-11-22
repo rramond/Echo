@@ -13,9 +13,40 @@ from classify import triage   # reuse your Step 3 engine, unchanged
 from store import embed_pending
 
 load_dotenv()
-EMAIL = os.environ["GMAIL_ADDRESS"]
-APP_PASSWORD = os.environ["GMAIL_APP_PASSWORD"]
-IMAP_HOST = "imap.gmail.com"
+
+
+def load_accounts():
+    """Accounts come from .env as numbered groups:
+
+        ACCOUNT_1_NAME=personal
+        ACCOUNT_1_ADDRESS=me@gmail.com
+        ACCOUNT_1_PASSWORD=app-password
+        ACCOUNT_1_HOST=imap.gmail.com      (optional, this is the default)
+
+    and so on for ACCOUNT_2_..., ACCOUNT_3_... The older single-account
+    GMAIL_ADDRESS / GMAIL_APP_PASSWORD pair still works as a "personal" account.
+    """
+    accounts = []
+    n = 1
+    while os.environ.get(f"ACCOUNT_{n}_ADDRESS"):
+        accounts.append({
+            "name": os.environ.get(f"ACCOUNT_{n}_NAME", f"account{n}"),
+            "address": os.environ[f"ACCOUNT_{n}_ADDRESS"],
+            "password": os.environ[f"ACCOUNT_{n}_PASSWORD"],
+            "host": os.environ.get(f"ACCOUNT_{n}_HOST", "imap.gmail.com"),
+        })
+        n += 1
+    if not accounts and os.environ.get("GMAIL_ADDRESS"):
+        accounts.append({"name": "personal",
+                         "address": os.environ["GMAIL_ADDRESS"],
+                         "password": os.environ["GMAIL_APP_PASSWORD"],
+                         "host": "imap.gmail.com"})
+    if not accounts:
+        raise RuntimeError("No mail accounts configured in .env")
+    return accounts
+
+
+ACCOUNTS = load_accounts()
 
 def fallback_id(msg):
     raw = (decode_str(msg.get("From")) + decode_str(msg.get("Subject"))
@@ -69,9 +100,9 @@ def get_body(msg):
     return clean(text)
 
 
-def fetch_new(limit=50):
-    imap = imaplib.IMAP4_SSL(IMAP_HOST)
-    imap.login(EMAIL, APP_PASSWORD)
+def fetch_account(account, limit=50):
+    imap = imaplib.IMAP4_SSL(account["host"])
+    imap.login(account["address"], account["password"])
     imap.select("INBOX")
     _, data = imap.search(None, "UNSEEN")        # server-side: only unread mail
     ids = data[0].split()
@@ -82,26 +113,40 @@ def fetch_new(limit=50):
         message_id = msg.get("Message-ID") or fallback_id(msg)
         if already_seen(message_id):             # ledger says judged already → skip
             continue
-        new_items.append((message_id, msg))
+        new_items.append((account["name"], message_id, msg))
     imap.logout()
     return new_items
 
 
+def fetch_new(limit=50):
+    """Fetch unread mail from every account. One account failing (wrong
+    password, server down) doesn't stop the others; its error is returned."""
+    new_items, errors = [], []
+    for account in ACCOUNTS:
+        try:
+            new_items += fetch_account(account, limit)
+        except Exception as e:
+            errors.append(f"{account['name']}: {e}")
+    return new_items, errors
+
+
 if __name__ == "__main__":
     init_db()
-    new_items = fetch_new()
+    new_items, errors = fetch_new()
+    for err in errors:
+        print(f"⚠️  {err}")
     if not new_items:
         print("No new mail since last run. 📭")
-    for message_id, msg in new_items:
+    for account, message_id, msg in new_items:
         sender = decode_str(msg.get("From"))
         subject = decode_str(msg.get("Subject"))
         date = msg.get("Date") or ""
         body = get_body(msg)[:2000]
         r = triage(subject, body)
         notified = r.importance >= 2
-        save(message_id, sender, subject, date, body, r, notified)  # body now stored
+        save(message_id, sender, subject, date, body, r, notified, account)
         flag = "🔔 NOTIFY" if notified else "  quiet"
         print(f"{flag} | {r.category.value:12} imp={r.importance} | {subject[:45]}")
-        print(f"         from: {sender[:50]}")
+        print(f"         [{account}] from: {sender[:50]}")
         print(f"         └ {r.reason}\n")
     embed_pending()

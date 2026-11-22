@@ -2,7 +2,7 @@
 
 > A local, private email assistant that reads your inbox, tells you what matters, and answers questions about it, by text or by voice.
 
-Echo watches a Gmail inbox over IMAP. A local LLM sorts each new message into a category and gives it an importance score, and everything is stored in SQLite with embeddings so you can ask questions like *"did I get any contest results this week?"* and get an answer drawn only from your own mail.
+Echo watches one or more inboxes over IMAP (say, personal and work). A local LLM sorts each new message into a category and gives it an importance score, and everything is stored in SQLite with embeddings so you can ask questions like *"did I get any contest results this week?"* and get an answer drawn only from your own mail.
 
 Everything runs on your own machine: [Ollama](https://ollama.com) for the LLM and embeddings, [faster-whisper](https://github.com/SYSTRAN/faster-whisper) for speech-to-text, and [Piper](https://github.com/rhasspy/piper) for text-to-speech.
 
@@ -11,7 +11,7 @@ Everything runs on your own machine: [Ollama](https://ollama.com) for the LLM an
 ## How it works
 
 ```
- Gmail (IMAP, UNSEEN)
+  inboxes (IMAP, UNSEEN)
         │
         ▼
    fetch.py ──► classify.py ──► store.py ──► agent.db
@@ -61,12 +61,20 @@ python -m venv .venv
 #    https://huggingface.co/rhasspy/piper-voices
 ```
 
-Create a `.env` file containing a Gmail [app password](https://myaccount.google.com/apppasswords):
+Create a `.env` file with one numbered block per inbox. For Gmail, the password is an [app password](https://myaccount.google.com/apppasswords), not your normal one. `HOST` is optional and defaults to `imap.gmail.com`.
 
 ```env
-GMAIL_ADDRESS=you@gmail.com
-GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
+ACCOUNT_1_NAME=personal
+ACCOUNT_1_ADDRESS=you@gmail.com
+ACCOUNT_1_PASSWORD=xxxx xxxx xxxx xxxx
+
+ACCOUNT_2_NAME=work
+ACCOUNT_2_ADDRESS=you@company.com
+ACCOUNT_2_PASSWORD=...
+ACCOUNT_2_HOST=imap.company.com
 ```
+
+Each email is tagged with its account name, so you can ask *"anything urgent in my work email?"* and Echo searches only that inbox. If one account fails to connect, the others still get checked. The old single-account `GMAIL_ADDRESS` / `GMAIL_APP_PASSWORD` pair still works and is treated as `personal`.
 
 ## Usage
 

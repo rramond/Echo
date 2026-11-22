@@ -42,6 +42,11 @@ def init_db():
                        vector     BLOB
                    )
                """)
+        # Older databases predate multi-account support: add the column and
+        # credit existing mail to the original (personal) inbox.
+        cols = [row[1] for row in c.execute("PRAGMA table_info(emails)")]
+        if "account" not in cols:
+            c.execute("ALTER TABLE emails ADD COLUMN account TEXT DEFAULT 'personal'")
 
 
 def already_seen(message_id):
@@ -51,16 +56,16 @@ def already_seen(message_id):
         ).fetchone() is not None
 
 
-def save(message_id, sender, subject, date, body, triage, notified):
+def save(message_id, sender, subject, date, body, triage, notified, account="personal"):
     with sqlite3.connect(DB_PATH) as c:
         c.execute(
             """INSERT OR IGNORE INTO emails
                (message_id, sender, subject, date, body, category, importance,
-                reason, notified, triaged_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                reason, notified, triaged_at, account)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (message_id, sender, subject, date, body,
              triage.category.value, triage.importance, triage.reason,
-             int(notified), datetime.now(timezone.utc).isoformat()),
+             int(notified), datetime.now(timezone.utc).isoformat(), account),
         )
 
 def _detect_categories(question):
@@ -71,14 +76,26 @@ def _detect_importance(question):
     q = question.lower()
     return any(w in q for w in ["important", "urgent", "notify", "attention", "miss", "matter"])
 
+def _detect_accounts(question):
+    # "anything new in my work email?" -> only search the account named "work"
+    with sqlite3.connect(DB_PATH) as c:
+        names = [r[0] for r in c.execute(
+            "SELECT DISTINCT account FROM emails WHERE account IS NOT NULL")]
+    words = set(re.findall(r"\w+", question.lower()))
+    return [n for n in names if n.lower() in words]
+
 def _cosine(a, b):
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8))
 
 def retrieve(question, limit=8):
     cats = _detect_categories(question)
     want_important = _detect_importance(question)
+    accounts = _detect_accounts(question)
 
     where, params = [], []
+    if accounts:
+        where.append("account IN (%s)" % ",".join("?" * len(accounts)))
+        params += accounts
     if cats:
         where.append("category IN (%s)" % ",".join("?" * len(cats)))
         params += cats

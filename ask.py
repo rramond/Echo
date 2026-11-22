@@ -19,6 +19,7 @@ def format_emails(rows):
     for r in rows:
         blocks.append(
             f"--- Email ---\n"
+            f"Inbox: {r['account']}\n"
             f"From: {r['sender']}\nSubject: {r['subject']}\nDate: {r['date']}\n"
             f"Category: {r['category']} (importance {r['importance']})\n"
             f"Content: {(r['body'] or '')[:1500]}"
